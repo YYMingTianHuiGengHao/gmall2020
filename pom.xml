@@ -19,6 +19,9 @@
         <module>gmall-common</module>
         <module>gmall-mocker</module>
         <module>gmall-logger</module>
+        <module>gmall-realtime</module>
+        <module>dw-chart</module>
+        <module>gmall-canal</module>
     </modules>
     <properties>
         <spark.version>3.0.0</spark.version>
