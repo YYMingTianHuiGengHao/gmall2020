@@ -22,6 +22,7 @@
         <module>gmall-realtime</module>
         <module>dw-chart</module>
         <module>gmall-canal</module>
+        <module>gmall-es</module>
     </modules>
     <properties>
         <spark.version>3.0.0</spark.version>
@@ -113,7 +114,31 @@
                 <artifactId>spark-streaming-kafka-0-10_2.12</artifactId>
                 <version>${spark.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>io.searchbox</groupId>
+                <artifactId>jest</artifactId>
+                <version>5.3.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>4.5.2</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.codehaus.janino</groupId>
+                <artifactId>commons-compiler</artifactId>
+                <version>2.7.8</version>
+            </dependency>
+
+
+
         </dependencies>
+
+
+
     </dependencyManagement>
 
 
