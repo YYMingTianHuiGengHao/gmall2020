@@ -1,5 +1,7 @@
 package com.atguigu.app
 
+import java.util
+
 import com.alibaba.fastjson.JSON
 import com.atguigu.bean.{OrderDetail, OrderInfo, SaleDetail}
 import com.atguigu.constant.GmallConstants
@@ -9,10 +11,11 @@ import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.json4s.DefaultFormats
+import org.json4s.native.Serialization
 import redis.clients.jedis.Jedis
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
-
 /**
  * @author yymstart
  * @create 2020-11-10 18:21
@@ -64,12 +67,14 @@ object SaleDetailApp {
     val fullJoinDStream: DStream[(String, (Option[OrderInfo], Option[OrderDetail]))] = orderIdToInfoDStream.fullOuterJoin(orderIdToDetailDStream)
 
     //6.处理JOIN之后的数据
-    fullJoinDStream.mapPartitions(iter => {
+    val noUserSaleDetailDStream: DStream[SaleDetail] = fullJoinDStream.mapPartitions(iter => {
 
       //获取Redis连接
       val jedisClient: Jedis = RedisUtil.getJedisClient
       //创建集合用于存放关联上的数据
       val details = new ListBuffer[SaleDetail]
+
+      implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
 
       //遍历iter,做数据处理
       iter.foreach { case ((orderId, (infoOpt, detailOpt))) =>
@@ -88,21 +93,50 @@ object SaleDetailApp {
             val orderDetail: OrderDetail = detailOpt.get
             //创建SaleDetail
             val saleDetail = new SaleDetail(orderInfo, orderDetail)
-            //添加至集合
-            details :+ saleDetail
+            //添加至集合,可变用符号,不可变用方法
+            //可变+=
+            //不可变:+
+            details += saleDetail
           }
 
           //a.2 将info数据写入redis,给后续的detail数据使用
           // val infoStr: String = JSON.toJSONString(orderInfo)//编译通不过
-          import org.json4s.native.Serialization
-          implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
           val infoStr: String = Serialization.write(orderInfo)
           jedisClient.set(infoRedisKey, infoStr)
+          jedisClient.expire(infoRedisKey, 100)
 
-          //a.3
+          //a.3判断可加可不加
+          if (jedisClient.exists(detailRedisKey)) {
+            val detailJsonSet: util.Set[String] = jedisClient.smembers(detailRedisKey)
+            //scala遍历java的set
+            detailJsonSet.asScala.foreach(detailJson => {
+              //转换为样例类对象,并创建SaleDetail存入集合
+              val detail: OrderDetail = JSON.parseObject(detailJson, classOf[OrderDetail])
+              details += new SaleDetail(orderInfo, detail)
+            })
+          }
 
         } else {
           //b.判断infoOpt为空
+          //获取detailOpt数据
+          val orderDetail: OrderDetail = detailOpt.get
+
+          if (jedisClient.exists(infoRedisKey)) {
+            //b.1 查询Redis中有OrderInfo数据
+            //取出Redis中OrderInfo数据
+            val infoJson: String = jedisClient.get(infoRedisKey)
+            //转换数据为样例类对象
+            val orderInfo: OrderInfo = JSON.parseObject(infoJson, classOf[OrderInfo])
+            //创建SaleDetail存入集合
+            details += new SaleDetail(orderInfo, orderDetail)
+          } else {
+            //b.2 查询Redis中没有OrderInfo数据
+            val detailStr: String = Serialization.write(orderDetail)
+            //写入Redis
+            jedisClient.sadd(detailRedisKey, detailStr)
+            //设置过期时间
+            jedisClient.expire(detailRedisKey, 100)
+          }
         }
 
       }
@@ -115,22 +149,24 @@ object SaleDetailApp {
 
     })
 
+    //测试
+    noUserSaleDetailDStream.print(100)
 
 
 
 
 
 
-/*    orderDetailKafkaDStream.foreachRDD(
-      rdd=> {
-        rdd.foreach(record=>println(record.value()))
-      }
-    )
-    orderInfoKafkaDStream.foreachRDD(
-      rdd=>{
-        rdd.foreach(record=>println(record.value()))
-      }
-    )*/
+    /*    orderDetailKafkaDStream.foreachRDD(
+          rdd=> {
+            rdd.foreach(record=>println(record.value()))
+          }
+        )
+        orderInfoKafkaDStream.foreachRDD(
+          rdd=>{
+            rdd.foreach(record=>println(record.value()))
+          }
+        )*/
     ssc.start()
     ssc.awaitTermination()
   }
