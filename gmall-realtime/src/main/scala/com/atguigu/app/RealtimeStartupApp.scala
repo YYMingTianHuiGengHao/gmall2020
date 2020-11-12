@@ -10,10 +10,10 @@ import com.atguigu.handler.DauHandler
 import com.atguigu.util.MyKafkaUtil
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.phoenix.spark._
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.phoenix.spark._
 /**
  * @author yymstart
  * @create 2020-11-04 19:41
@@ -34,6 +34,7 @@ object RealtimeStartupApp {
         println(record.value())
       })
     })*/
+
     //4.将一行数据转换为样例类对象,并补充时间字段
     val sdf = new SimpleDateFormat("yyyy-MM-dd HH")
     val startLogDStream: DStream[StartUpLog] = kafkaDStream.map(record => {
@@ -52,7 +53,7 @@ object RealtimeStartupApp {
       startUpLog
 
     })
-    startLogDStream
+
     //5.根据redis进行跨批次去重
     val filterByRedis: DStream[StartUpLog] = DauHandler.filterByRedis(startLogDStream,ssc.sparkContext)
 

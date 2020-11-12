@@ -9,6 +9,7 @@ import com.atguigu.util.RedisUtil
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.streaming.dstream.DStream
+import redis.clients.jedis.Jedis
 
 /**
  * @author yymstart
@@ -80,34 +81,34 @@ object DauHandler {
 
   }
 
-
   /**
    * 将去重之后的数据中的mid保存到redis
    *
    * @param startLogDStream 经过2次去重之后的数据集
    */
-  def saveMidToRedis(startLogDStream: DStream[StartUpLog]) = {
-    startLogDStream.foreachRDD(rdd=>{
+  def saveMidToRedis(startLogDStream: DStream[StartUpLog]): Unit = {
+
+    startLogDStream.foreachRDD(rdd => {
 
       //使用分区操作,减少连接的获取与释放
-      rdd.foreachPartition(iter=>{
+      rdd.foreachPartition(iter => {
 
-        //1.获取连接
-        val jedisClient = RedisUtil.getJedisClient
-        //2.写库操作
-        iter.foreach(log=>{
+        //a.获取连接
+        val jedisClient: Jedis = RedisUtil.getJedisClient
+
+        //b.遍历写库
+        iter.foreach(log => {
           val redisKey = s"DAU:${log.logDate}"
-          jedisClient.sadd(redisKey,log.mid)
+          jedisClient.sadd(redisKey, log.mid)
         })
-        //3.归还链接
+
+        //c.归还连接
         jedisClient.close()
+
       })
 
     })
 
   }
-
-
-
 
 }

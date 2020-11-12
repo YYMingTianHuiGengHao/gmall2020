@@ -6,11 +6,10 @@ import com.atguigu.constant.GmallConstants
 import com.atguigu.util.MyKafkaUtil
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.phoenix.spark._
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.phoenix.spark._
-
 /**
  * @author yymstart
  * @create 2020-11-07 11:16

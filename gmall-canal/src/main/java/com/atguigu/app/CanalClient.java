@@ -90,6 +90,12 @@ public class CanalClient {
                 jsonObject.put(column.getName(), column.getValue());
             }
             System.out.println(jsonObject.toString());
+            //发送数据至Kafka
+//            try {
+//                Thread.sleep(new Random().nextInt(5) * 1000);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
             //发送数据至kafka
             MyKafkaSender.send(topic, jsonObject.toString());
 
